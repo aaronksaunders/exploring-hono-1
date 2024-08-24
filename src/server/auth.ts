@@ -16,6 +16,7 @@ interface User {
 interface JwtPayload {
   email: string;
   exp: number;
+  role: string;
 }
 
 // Middleware to verify JWT
@@ -33,6 +34,70 @@ const authenticate = async (c: Context, next: () => Promise<void>) => {
 };
 
 const auth = new Hono()
+  //////////////////////////////////////////////
+  // REGISTER ADMIN
+  //////////////////////////////////////////////
+  .post(
+    "/register-admin",
+    zValidator(
+      "json",
+      z.object({
+        email: z.string(),
+        password: z.string(),
+        firstName: z.string(),
+        lastName: z.string(),
+      })
+    ),
+    async (c) => {
+      // confirm that the user is an admin
+      const requestingUser = (c as any).user as JwtPayload;
+      const currentUser = await prisma.user.findUnique({
+        where: { email: requestingUser.email },
+        include: { role: true },
+      });
+
+      if (!currentUser) {
+        return c.json({ message: "User not found" }, 404);
+      }
+
+      if (currentUser.role.name !== "ADMIN") {
+        return c.json({ message: "User is not an admin" }, 403);
+      }
+
+      const { email, password, firstName, lastName } = c.req.valid("json");
+
+      const existingUser = await prisma.user.findUnique({ where: { email } });
+
+      if (existingUser) {
+        return c.json({ message: "User already exists" }, 400);
+      }
+
+      const adminRole = await prisma.role.findFirst({
+        where: { name: "ADMIN" },
+      });
+
+      if (!adminRole) {
+        return c.json({ message: "Admin Role not found" }, 400);
+      }
+
+      const user = await prisma.user.create({
+        data: {
+          email,
+          passwordHash: bcrypt.hashSync(password, 10),
+          firstName,
+          lastName,
+          role: {
+            connect: {
+              id: adminRole?.id,
+            },
+          },
+        },
+      });
+
+      const returnedUser = { ...user, passwordHash: undefined };
+      return c.json({ message: "User created", user: returnedUser }, 201);
+    }
+  )
   //////////////////////////////////////////////
   // REGISTER USER
   //////////////////////////////////////////////
@@ -56,12 +121,25 @@ const auth = new Hono()
         return c.json({ message: "User already exists" }, 400);
       }
 
+      const userRole = await prisma.role.findFirst({
+        where: { name: "USER" },
+      });
+
+      if (!userRole) {
+        return c.json({ message: "User Role not found" }, 400);
+      }
+
       const user = await prisma.user.create({
         data: {
           email,
           passwordHash: bcrypt.hashSync(password, 10),
           firstName,
           lastName,
+          role: {
+            connect: {
+              id: userRole?.id,
+            },
+          },
         },
       });
 
@@ -84,12 +162,16 @@ const auth = new Hono()
     async (c) => {
       const { email, password } = c.req.valid("json");
 
-      const user = await prisma.user.findUnique({ where: { email } });
+      const user = await prisma.user.findUnique({
+        where: { email },
+        include: { role: true },
+      });
 
       if (user && bcrypt.compareSync(password, user.passwordHash)) {
         const token = await sign(
           {
             email: user.email,
+            role: user.role.name,
             exp: Math.floor(Date.now() / 1000) + 60 * 5, // Token expires in 5 minutes
           },
           SECRET_KEY

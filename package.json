@@ -2,7 +2,8 @@
   "name": "my-app",
   "scripts": {
     "dev:server": "tsx watch src/server/index.ts",
-    "dev:client": "tsx watch src/client/index.ts"
+    "dev:client": "tsx watch src/client/index.ts",
+    "seed": "ts-node prisma/seed.mjs"
   },
   "dependencies": {
     "@auth/core": "^0.34.2",
@@ -13,11 +14,13 @@
     "bcrypt": "^5.1.1",
     "bcryptjs": "^2.4.3",
     "hono": "^4.5.8",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
-    "@types/node": "^20.11.17",
+    "@types/node": "^20.16.1",
     "prisma": "^5.18.0",
     "tsx": "^4.7.1"
   }
