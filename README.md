@@ -19,6 +19,9 @@ open http://localhost:3000
 
 ### Investigating
 - Validation with Zod
+- Prisma Integration
+- Authentication with Roles
+- Account Creation
 - Taking a look at file upload
 - Route Patterns
 - Typesafe Remote Procedure Calls (RPC)
